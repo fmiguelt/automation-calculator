@@ -2,6 +2,8 @@
 
 An interactive calculator inspired by [xkcd #1205 "Is It Worth the Time?"](https://xkcd.com/1205/). It helps you decide whether automating or optimizing a task will actually pay off.
 
+**Live app: <https://fmiguelt.github.io/automation-calculator/>**
+
 The whole app is a single static file, [`index.html`](index.html), with inline HTML, CSS and vanilla JavaScript. There is no build step and no dependencies.
 
 ## Features
