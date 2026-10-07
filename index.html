@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-PT" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vale a pena automatizar?</title>
+<meta name="description" content="Calculadora inspirada no xkcd #1205: descobre quanto tempo podes gastar a automatizar uma tarefa.">
+<style>
+:root {
+  --bg: #0f1420; --panel: #171d2c; --panel-2: #1e2638; --border: #2a3450;
+  --text: #e6eaf4; --muted: #8e99b8; --accent: #6c8cff; --accent-rgb: 108,140,255;
+  --good: #34d399; --good-bg: rgba(52,211,153,.12); --bad: #f87171; --bad-bg: rgba(248,113,113,.12);
+  --radius: 14px; --shadow: 0 6px 24px rgba(0,0,0,.25);
+}
+:root[data-theme="light"] {
+  --bg: #f3f5fa; --panel: #ffffff; --panel-2: #eef1f8; --border: #d9deec;
+  --text: #1a2036; --muted: #5d6786; --accent: #3b5bdb; --accent-rgb: 59,91,219;
+  --good: #0f9d6b; --good-bg: rgba(15,157,107,.10); --bad: #d63b3b; --bad-bg: rgba(214,59,59,.09);
+  --shadow: 0 6px 24px rgba(30,40,80,.08);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+h1 { margin: 0; font-size: clamp(1.4rem, 4vw, 2rem); letter-spacing: -.02em; }
+.sub { margin: 4px 0 0; color: var(--muted); font-size: .95rem; }
+.sub a { color: var(--accent); }
+h2 { margin: 0 0 14px; font-size: 1.1rem; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); margin-bottom: 18px; }
+button, input, select { font: inherit; color: var(--text); }
+input, select {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; min-width: 0;
+}
+input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button {
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+.icon-btn { width: 40px; height: 40px; padding: 0; font-size: 1.1rem; flex: none; }
+label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 6px; }
+.grid { display: grid; gap: 16px; }
+.settings { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); align-items: end; }
+.row { display: flex; gap: 8px; align-items: center; }
+.row input[type=range] { flex: 1; padding: 0; accent-color: var(--accent); }
+.row input[type=number] { width: 84px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; width: 100%; }
+.seg button { flex: 1; border: 0; border-radius: 0; background: transparent; color: var(--muted); }
+.seg button.on { background: var(--accent); color: #fff; }
+.hidden { display: none !important; }
+
+/* tabela */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 640px; }
+th, td { padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tr:last-child td, tr:last-child th { border-bottom: 0; }
+thead th { background: var(--panel-2); font-weight: 600; font-size: .85rem; color: var(--muted); }
+th.rowh, thead th:first-child { position: sticky; left: 0; z-index: 1; background: var(--panel-2); text-align: left; border-right: 1px solid var(--border); }
+.rowh .row { gap: 6px; }
+.rowh input[type=number] { width: 72px; padding: 6px 8px; }
+.rowh select { padding: 6px 4px; }
+.rowh .del { width: 30px; height: 30px; padding: 0; color: var(--muted); }
+td { font-variant-numeric: tabular-nums; font-size: .92rem; }
+.toolbar { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.hint { color: var(--muted); font-size: .85rem; margin: 10px 0 0; }
+
+/* simulador */
+.sim { display: grid; gap: 18px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .sim { grid-template-columns: 1fr 1fr; } }
+.field { margin-bottom: 14px; }
+.verdict { border-radius: var(--radius); padding: 18px; border: 1px solid; }
+.verdict.good { background: var(--good-bg); border-color: var(--good); }
+.verdict.bad { background: var(--bad-bg); border-color: var(--bad); }
+.verdict h3 { margin: 0 0 4px; font-size: 1.4rem; }
+.verdict.good h3 { color: var(--good); } .verdict.bad h3 { color: var(--bad); }
+.verdict p { margin: 0 0 14px; color: var(--muted); }
+.metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.metric { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.metric span { display: block; font-size: .78rem; color: var(--muted); }
+.metric b { font-size: 1.05rem; }
+footer { color: var(--muted); font-size: .85rem; text-align: center; margin-top: 8px; }
+footer a { color: var(--accent); }
+input, select { font-size: 16px; }
+.tools { display: flex; gap: 8px; align-items: center; flex: none; }
+.tools select { height: 40px; padding: 0 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 data-i18n="title">⏱️ Vale a pena automatizar?</h1>
+      <p class="sub" data-i18n="sub"></p>
+    </div>
+    <div class="tools">
+      <select id="lang" aria-label="Língua / Language">
+        <option value="pt">🇵🇹 PT</option>
+        <option value="en">🇬🇧 EN</option>
+      </select>
+      <button id="theme" class="icon-btn" type="button">🌙</button>
+    </div>
+  </header>
+
+  <section class="card">
+    <h2 data-i18n="settings"></h2>
+    <div class="grid settings">
+      <div>
+        <label for="years" data-i18n="horizon"></label>
+        <div class="row">
+          <input type="range" id="yearsRange" min="1" max="30" step="1">
+          <input type="number" id="years" min="0.1" max="100" step="any">
+        </div>
+      </div>
+      <div>
+        <label data-i18n="dayType"></label>
+        <div class="seg" role="group">
+          <button id="modeCal" type="button"></button>
+          <button id="modeWork" type="button"></button>
+        </div>
+      </div>
+      <div id="workCfg" class="row hidden">
+        <div style="flex:1"><label for="hpd" data-i18n="hpd"></label><input type="number" id="hpd" min="0.5" max="24" step="any" style="width:100%"></div>
+        <div style="flex:1"><label for="dpy" data-i18n="dpy"></label><input type="number" id="dpy" min="1" max="365" step="1" style="width:100%"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="tableTitle"></h2>
+    <div class="table-wrap"><table id="table"></table></div>
+    <div class="toolbar">
+      <button id="addRow" type="button" data-i18n="addRow"></button>
+      <button id="resetRows" type="button" data-i18n="resetRows"></button>
+    </div>
+    <p class="hint" data-i18n="tableHint"></p>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="simTitle"></h2>
+    <div class="sim">
+      <form id="sim" onsubmit="return false">
+        <div class="field">
+          <label data-i18n="sFreq"></label>
+          <div class="row">
+            <input type="number" id="sFreq" min="0" step="any" style="width:90px">
+            <span class="hint" style="margin:0" data-i18n="timesPer"></span>
+            <select id="sPer" style="flex:1"></select>
+          </div>
+        </div>
+        <div class="field">
+          <label data-i18n="sCur"></label>
+          <div class="row"><input type="number" id="sCur" min="0" step="any" style="width:90px"><select id="sCurU" class="unit" style="flex:1"></select></div>
+        </div>
+        <div class="field">
+          <div class="seg" style="margin-bottom:10px">
+            <button type="button" id="aftBtn" data-i18n="aftBtn"></button>
+            <button type="button" id="savBtn" data-i18n="savBtn"></button>
+          </div>
+          <div class="row"><input type="number" id="sAft" min="0" step="any" style="width:90px"><select id="sAftU" class="unit" style="flex:1"></select></div>
+        </div>
+        <div class="field">
+          <label data-i18n="sCost"></label>
+          <div class="row"><input type="number" id="sCost" min="0" step="any" style="width:90px"><select id="sCostU" class="unit" style="flex:1"></select></div>
+        </div>
+      </form>
+      <div id="verdict" class="verdict"></div>
+    </div>
+  </section>
+
+  <footer data-i18n="footer"></footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  let nf;
+  const num = (v) => { const n = parseFloat(v); return isFinite(n) && n > 0 ? n : 0; };
+
+  const DEFAULT_ROWS = [
+    [1, 's'], [5, 's'], [30, 's'], [1, 'min'], [5, 'min'], [30, 'min'], [1, 'h'], [6, 'h'], [1, 'd']
+  ].map(([v, u]) => ({ v, u }));
+
+  const COLS = [
+    { per: 'day', n: 50 }, { per: 'day', n: 5 }, { per: 'day', n: 1 },
+    { per: 'week', n: 1 }, { per: 'month', n: 1 }, { per: 'year', n: 1 }
+  ];
+  const UNITS = ['s', 'min', 'h', 'd'];
+
+  /* ---------- traduções ---------- */
+  const I18N = {
+    pt: {
+      locale: 'pt-PT', docTitle: 'Vale a pena automatizar?',
+      description: 'Calculadora inspirada no xkcd #1205: descobre quanto tempo podes gastar a automatizar uma tarefa.',
+      title: '⏱️ Vale a pena automatizar?',
+      sub: 'Quanto tempo podes gastar a otimizar uma tarefa antes de perderes tempo? Baseado no <a href="https://xkcd.com/1205/" target="_blank" rel="noopener">xkcd #1205</a>.',
+      themeBtn: 'Alternar tema', langLabel: 'Língua',
+      settings: 'Configurações', horizon: 'Horizonte temporal (anos)', dayType: 'Tipo de dias',
+      modeCal: 'Corridos (24h, 365 d)', modeWorkIdle: 'Úteis (ex.: 8h, 220 d)',
+      modeWork: (h, d) => `Úteis (${h}h, ${d} d)`, hpd: 'Horas/dia', dpy: 'Dias/ano',
+      tableTitle: 'Tabela: tempo máximo que vale a pena gastar',
+      tableCorner: 'Poupas por execução ↓ · Frequência →',
+      addRow: '+ Adicionar linha', resetRows: 'Repor padrão', delRow: 'Remover linha', value: 'Valor',
+      tableHint: 'Cada célula mostra o tempo total poupado no horizonte escolhido, ou seja, o máximo que podes gastar a automatizar antes de sair a perder. Edita os tempos da primeira coluna à vontade.',
+      simTitle: 'Simulador: o meu caso', sFreq: 'Quantas vezes faz a tarefa?', timesPer: 'vez(es) por',
+      sCur: 'Tempo atual por execução (manual)', aftBtn: 'Tempo após automatizar', savBtn: 'Tempo poupado',
+      sCost: 'Tempo estimado para criar a automação',
+      footer: 'Os cálculos usam os dias corridos ou úteis definidos acima. · Os teus dados ficam só no teu browser.',
+      per: { day: 'dia', week: 'semana', month: 'mês', year: 'ano' },
+      colLabel: (n, per) => `${n}× / ${{ day: 'dia', week: 'semana', month: 'mês', year: 'ano' }[per]}`,
+      unitName: { s: 'segundos', min: 'minutos', h: 'horas', d: 'dias' },
+      t: { s: ['segundo', 'segundos'], min: ['minuto', 'minutos'], h: ['hora', 'horas'], d: ['dia', 'dias'],
+           w: ['semana', 'semanas'], mo: ['mês', 'meses'], y: ['ano', 'anos'] },
+      yes: '✅ Vale a pena automatizar!', no: '❌ Não vale a pena!',
+      noSaving: 'A automação não poupa tempo por execução.',
+      gain: (y, net) => `Em ${y} poupas ${net} a mais do que gastas a criá-la.`,
+      loss: (y, net) => `Gastas ${net} a mais do que poupas em ${y}.`,
+      mTotal: 'Tempo poupado no horizonte', mCost: 'Tempo a automatizar', mNet: 'Saldo líquido',
+      mBE: 'Ponto de equilíbrio', mPerRun: 'Poupança por execução', mROI: 'ROI',
+      never: 'Nunca', immediate: 'Imediato', calNote: 'em tempo de calendário'
+    },
+    en: {
+      locale: 'en-US', docTitle: 'Is it worth automating?',
+      description: 'Calculator inspired by xkcd #1205: find out how much time you can spend automating a task.',
+      title: '⏱️ Is it worth automating?',
+      sub: 'How much time can you spend optimizing a task before you lose time? Based on <a href="https://xkcd.com/1205/" target="_blank" rel="noopener">xkcd #1205</a>.',
+      themeBtn: 'Toggle theme', langLabel: 'Language',
+      settings: 'Settings', horizon: 'Time horizon (years)', dayType: 'Day type',
+      modeCal: 'Calendar (24h, 365 d)', modeWorkIdle: 'Workdays (e.g. 8h, 220 d)',
+      modeWork: (h, d) => `Workdays (${h}h, ${d} d)`, hpd: 'Hours/day', dpy: 'Days/year',
+      tableTitle: 'Table: how much time is worth spending',
+      tableCorner: 'You save per run ↓ · Frequency →',
+      addRow: '+ Add row', resetRows: 'Reset to default', delRow: 'Remove row', value: 'Value',
+      tableHint: 'Each cell shows the total time saved over the chosen horizon, i.e. the most you can spend automating before you come out behind. Feel free to edit the times in the first column.',
+      simTitle: 'Simulator: my case', sFreq: 'How often do you do the task?', timesPer: 'time(s) per',
+      sCur: 'Current time per run (manual)', aftBtn: 'Time after automating', savBtn: 'Time saved',
+      sCost: 'Estimated time to build the automation',
+      footer: 'Calculations use the calendar or workday settings above. · Your data stays in your browser.',
+      per: { day: 'day', week: 'week', month: 'month', year: 'year' },
+      colLabel: (n, per) => `${n}× / ${{ day: 'day', week: 'week', month: 'month', year: 'year' }[per]}`,
+      unitName: { s: 'seconds', min: 'minutes', h: 'hours', d: 'days' },
+      t: { s: ['second', 'seconds'], min: ['minute', 'minutes'], h: ['hour', 'hours'], d: ['day', 'days'],
+           w: ['week', 'weeks'], mo: ['month', 'months'], y: ['year', 'years'] },
+      yes: '✅ Worth automating!', no: '❌ Not worth it!',
+      noSaving: "The automation doesn't save any time per run.",
+      gain: (y, net) => `Over ${y} you save ${net} more than it costs to build.`,
+      loss: (y, net) => `You spend ${net} more than you save over ${y}.`,
+      mTotal: 'Time saved over horizon', mCost: 'Time to automate', mNet: 'Net balance',
+      mBE: 'Break-even point', mPerRun: 'Savings per run', mROI: 'ROI',
+      never: 'Never', immediate: 'Immediate', calNote: 'in calendar time'
+    }
+  };
+  const detectLang = () => ((navigator.language || 'pt').toLowerCase().startsWith('pt') ? 'pt' : 'en');
+  const L = () => I18N[state.lang] || I18N.pt;
+
+  const state = {
+    lang: detectLang(),
+    years: 5, mode: 'calendar', hpd: 8, dpy: 220,
+    rows: DEFAULT_ROWS.map((r) => ({ ...r })),
+    sim: { freq: 1, per: 'week', cur: 30, curU: 'min', aft: 5, aftU: 'min', savedMode: false, cost: 4, costU: 'h' },
+    theme: window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem('automation-calc') || 'null');
+    if (saved && typeof saved === 'object') {
+      Object.assign(state, saved, { sim: { ...state.sim, ...(saved.sim || {}) } });
+      if (!Array.isArray(state.rows) || !state.rows.length) state.rows = DEFAULT_ROWS.map((r) => ({ ...r }));
+    }
+  } catch (e) {}
+  const persist = () => { try { localStorage.setItem('automation-calc', JSON.stringify(state)); } catch (e) {} };
+
+  /* ---------- modelo de tempo ---------- */
+  // calendar=true força dias corridos (usado para o ponto de equilíbrio)
+  function ctx(calendar) {
+    const work = state.mode === 'work' && !calendar;
+    const dayS = (work ? Math.max(state.hpd, 0.01) : 24) * 3600;
+    const dpy = work ? Math.max(state.dpy, 1) : 365;
+    const dpw = work ? 5 : 7;
+    return { dayS, dpy, weekS: dayS * dpw, yearS: dayS * dpy, monthS: dayS * dpy / 12, dpw };
+  }
+  function unitSeconds(u, c = ctx()) { return { s: 1, min: 60, h: 3600, d: c.dayS }[u]; }
+  function perYear(per, c = ctx()) {
+    return { day: c.dpy, week: c.dpy / c.dpw, month: 12, year: 1 }[per];
+  }
+
+  // segundos → texto legível
+  function formatTime(sec, calendar) {
+    const c = ctx(calendar);
+    if (!isFinite(sec)) return '—';
+    if (sec < 0) return '−' + formatTime(-sec, calendar);
+    const T = L().t;
+    const plural = (n, k) => `${nf.format(n)} ${T[k][Math.abs(n - 1) < 0.05 ? 0 : 1]}`;
+    if (sec < 0.5) return plural(0, 's');
+    if (sec < 60) return plural(sec, 's');
+    if (sec < 3600) return plural(sec / 60, 'min');
+    if (sec < c.dayS) return plural(sec / 3600, 'h');
+    if (sec < c.weekS) return plural(sec / c.dayS, 'd');
+    if (sec < c.monthS) return plural(sec / c.weekS, 'w');
+    if (sec < c.yearS) return plural(sec / c.monthS, 'mo');
+    return plural(sec / c.yearS, 'y');
+  }
+  const yearsText = (y) => `${nf.format(y)} ${L().t.y[y === 1 ? 0 : 1]}`;
+
+  /* ---------- tabela ---------- */
+  function unitOptions(value) {
+    return UNITS.map((k) => `<option value="${k}"${k === value ? ' selected' : ''}>${L().unitName[k]}</option>`).join('');
+  }
+  function unitSelect(cls, value) {
+    return `<select class="${cls}">${unitOptions(value)}</select>`;
+  }
+  function buildTable() {
+    const l = L();
+    const head = `<thead><tr><th>${l.tableCorner}</th>` + COLS.map((c) => `<th>${l.colLabel(c.n, c.per)}</th>`).join('') + '</tr></thead>';
+    const body = state.rows.map((r, i) =>
+      `<tr data-i="${i}"><th class="rowh"><div class="row">` +
+      `<input type="number" class="rv" min="0" step="any" value="${r.v}" aria-label="${l.value}">` +
+      unitSelect('ru', r.u) +
+      `<button type="button" class="del" title="${l.delRow}" aria-label="${l.delRow}">✕</button></div></th>` +
+      COLS.map(() => '<td></td>').join('') + '</tr>').join('');
+    $('table').innerHTML = head + '<tbody>' + body + '</tbody>';
+    updateCells();
+  }
+  function updateCells() {
+    const c = ctx();
+    const horizonS = c.yearS * num(state.years);
+    const trs = $('table').tBodies[0].rows;
+    state.rows.forEach((r, i) => {
+      const per = num(r.v) * unitSeconds(r.u, c);
+      COLS.forEach((col, j) => {
+        const total = per * col.n * perYear(col.per, c) * num(state.years);
+        const td = trs[i].cells[j + 1];
+        td.textContent = formatTime(total);
+        // mapa de calor (escala logarítmica entre 1 min e o horizonte)
+        const t = total > 60 && horizonS > 60 ? Math.min(1, Math.log(total / 60) / Math.log(Math.max(horizonS / 60, 2))) : 0;
+        td.style.background = t > 0 ? `rgba(var(--accent-rgb), ${(0.05 + t * 0.35).toFixed(2)})` : '';
+      });
+    });
+  }
+
+  /* ---------- simulador ---------- */
+  function renderSim() {
+    const s = state.sim, c = ctx();
+    const cur = num(s.cur) * unitSeconds(s.curU, c);
+    const other = num(s.aft) * unitSeconds(s.aftU, c);
+    const saved = s.savedMode ? other : cur - other;
+    const cost = num(s.cost) * unitSeconds(s.costU, c);
+    const runsYear = num(s.freq) * perYear(s.per, c);
+    const years = num(state.years);
+    const savingsYear = saved * runsYear;
+    const total = savingsYear * years;
+    const net = total - cost;
+    const worth = saved > 0 && net > 0;
+
+    const l = L();
+    let be = l.never, beNote = '';
+    if (savingsYear > 0) {
+      const beS = (cost / savingsYear) * ctx(true).yearS; // tempo de calendário
+      be = cost === 0 ? l.immediate : formatTime(beS, true);
+      beNote = cost === 0 ? '' : l.calNote;
+    }
+    const roi = cost > 0 ? nf.format((net / cost) * 100) + ' %' : '—';
+    const v = $('verdict');
+    v.className = 'verdict ' + (worth ? 'good' : 'bad');
+    v.innerHTML =
+      `<h3>${worth ? l.yes : l.no}</h3>` +
+      `<p>${saved <= 0 ? l.noSaving : worth ? l.gain(yearsText(years), formatTime(net)) : l.loss(yearsText(years), formatTime(-net))}</p>` +
+      '<div class="metrics">' +
+      m(l.mTotal, formatTime(total)) +
+      m(l.mCost, formatTime(cost)) +
+      m(l.mNet, (net > 0 ? '+' : '') + formatTime(net)) +
+      m(l.mBE, be + (beNote ? `<br><small style="color:var(--muted);font-weight:400">${beNote}</small>` : '')) +
+      m(l.mPerRun, formatTime(Math.max(saved, 0))) +
+      m(l.mROI, roi) + '</div>';
+  }
+  const m = (l, val) => `<div class="metric"><span>${l}</span><b>${val}</b></div>`;
+
+  /* ---------- UI global ---------- */
+  function syncControls() {
+    document.documentElement.dataset.theme = state.theme;
+    $('theme').textContent = state.theme === 'dark' ? '🌙' : '☀️';
+    $('years').value = state.years;
+    $('yearsRange').value = Math.min(30, Math.max(1, Math.round(num(state.years)) || 1));
+    $('hpd').value = state.hpd; $('dpy').value = state.dpy;
+    $('modeCal').classList.toggle('on', state.mode === 'calendar');
+    $('modeWork').classList.toggle('on', state.mode === 'work');
+    updateModeLabel();
+    $('workCfg').classList.toggle('hidden', state.mode !== 'work');
+    $('aftBtn').classList.toggle('on', !state.sim.savedMode);
+    $('savBtn').classList.toggle('on', state.sim.savedMode);
+  }
+  function updateModeLabel() {
+    const l = L();
+    $('modeWork').textContent = state.mode === 'work' ? l.modeWork(nf.format(state.hpd), state.dpy) : l.modeWorkIdle;
+  }
+  function refresh() { syncControls(); updateCells(); renderSim(); persist(); }
+
+  // aplica a língua a todo o texto (estático e gerado)
+  function applyLang() {
+    const l = L();
+    nf = new Intl.NumberFormat(l.locale, { maximumFractionDigits: 1 });
+    document.documentElement.lang = state.lang === 'en' ? 'en' : 'pt-PT';
+    document.title = l.docTitle;
+    const md = document.querySelector('meta[name=description]'); if (md) md.content = l.description;
+    document.querySelectorAll('[data-i18n]').forEach((el) => { el.innerHTML = l[el.dataset.i18n]; });
+    $('modeCal').textContent = l.modeCal;
+    $('theme').title = $('theme').ariaLabel = l.themeBtn;
+    $('lang').value = state.lang;
+    $('lang').title = l.langLabel;
+    $('sPer').innerHTML = ['day', 'week', 'month', 'year'].map((k) => `<option value="${k}">${l.per[k]}</option>`).join('');
+    $('sPer').value = state.sim.per;
+    [['sCurU', 'curU'], ['sAftU', 'aftU'], ['sCostU', 'costU']].forEach(([id, key]) => { $(id).innerHTML = unitOptions(state.sim[key]); });
+    buildTable();
+    refresh();
+  }
+  $('lang').addEventListener('change', (e) => { state.lang = e.target.value; applyLang(); });
+  const bindSim = (id, key, isNum) => {
+    const el = $(id); el.value = state.sim[key];
+    el.addEventListener('input', () => { state.sim[key] = isNum ? el.value : el.value; renderSim(); persist(); });
+  };
+  bindSim('sFreq', 'freq', true); bindSim('sPer', 'per'); bindSim('sCur', 'cur', true); bindSim('sCurU', 'curU');
+  bindSim('sAft', 'aft', true); bindSim('sAftU', 'aftU'); bindSim('sCost', 'cost', true); bindSim('sCostU', 'costU');
+
+  $('theme').onclick = () => { state.theme = state.theme === 'dark' ? 'light' : 'dark'; refresh(); };
+  $('years').addEventListener('input', (e) => { state.years = e.target.value; $('yearsRange').value = Math.min(30, Math.max(1, Math.round(num(e.target.value)) || 1)); updateCells(); renderSim(); persist(); });
+  $('yearsRange').addEventListener('input', (e) => { state.years = +e.target.value; refresh(); });
+  $('modeCal').onclick = () => { state.mode = 'calendar'; refresh(); };
+  $('modeWork').onclick = () => { state.mode = 'work'; refresh(); };
+  $('hpd').addEventListener('input', (e) => { state.hpd = num(e.target.value) || 8; updateCells(); renderSim(); persist(); updateModeLabel(); });
+  $('dpy').addEventListener('input', (e) => { state.dpy = num(e.target.value) || 220; updateCells(); renderSim(); persist(); updateModeLabel(); });
+  $('aftBtn').onclick = () => { state.sim.savedMode = false; refresh(); };
+  $('savBtn').onclick = () => { state.sim.savedMode = true; refresh(); };
+  $('addRow').onclick = () => { state.rows.push({ v: 1, u: 'min' }); buildTable(); persist(); };
+  $('resetRows').onclick = () => { state.rows = DEFAULT_ROWS.map((r) => ({ ...r })); buildTable(); persist(); };
+
+  // delegação de eventos na tabela
+  $('table').addEventListener('input', (e) => {
+    const tr = e.target.closest('tr[data-i]'); if (!tr) return;
+    const r = state.rows[+tr.dataset.i];
+    if (e.target.classList.contains('rv')) r.v = e.target.value;
+    if (e.target.classList.contains('ru')) r.u = e.target.value;
+    updateCells(); persist();
+  });
+  $('table').addEventListener('click', (e) => {
+    const b = e.target.closest('.del'); if (!b) return;
+    if (state.rows.length <= 1) return;
+    state.rows.splice(+b.closest('tr').dataset.i, 1); buildTable(); persist();
+  });
+
+  if (!I18N[state.lang]) state.lang = detectLang();
+  applyLang();
+})();
+</script>
+</body>
+</html>
